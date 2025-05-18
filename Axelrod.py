@@ -11,7 +11,7 @@ N=L*L
 #Parámetros del modelo de Axelrod
 f=3  #f=numero de rasgo de cada individuo
 q_values=range(3,26) # Lista de q utilizados. q=numero de valores posibles para cada rasgo
-p=2  #p=número de medios de comunicacion (prensa)
+p=0  #p=número de medios de comunicacion (prensa)
 h=1.0     #probabilidad de interaccion con la prensa
 sim_min=1/f #similitud mínima normalizada para que dos agentes se consideren similares
 
