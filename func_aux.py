@@ -54,14 +54,20 @@ def similarity(i, j, agentes,f):
 #Comprueba si ha finalizado la interacción
 #@njit
 def FinInteraccion(agentes, vecinos_list, N,f, prensas, sim_min):
-    for i in range(N):
+    linksactivos = 0
+    for i in range(N+prensas):
         for j in vecinos_list[i]:
             if j<N:
                 sim= similarity(i, j, agentes, f)
                 if sim<1 and sim>=sim_min:
-                    return False #Si encuentra al menos una interacción posible, devuelve False
-    # Si no queda interacción posible, devuelve True                    
-    return True      
+                    linksactivos = linksactivos + 1
+    if linksactivos == 0:   
+        # Si no queda interacción posible, devuelve True                    
+        return True, linksactivos 
+    else:           
+        #Si encuentra al menos una interacción posible, devuelve False
+        return False, linksactivos
+          
 
 #Comprueba si dos agentes tienen exactamente la misma cultura. Devuelve True si son iguales y False si son diferentes
 #@njit
@@ -95,3 +101,20 @@ def tamaño_mayor_cluster(agentes, vecinos_list, N):
                 mayor_cluster = cluster_size
 
     return mayor_cluster / N 
+
+
+def transformarmatriz(agentes, L, f, matriznueva):
+    """
+    Transforma la matriz de agentes en una matriz de tamaño L x L x f.
+    """
+    for i in range(L):
+        for j in range(L):
+            for k in range(f):
+                # Asignamos el valor de la matriz original a la nueva matriz
+                # La nueva matriz tiene dimensiones L x L x f
+                # La matriz original es de tamaño (N+prensas) x f
+                # Por lo tanto, necesitamos calcular el índice correspondiente en la matriz original
+                # El índice en la matriz original es i * L + j
+                # y el índice en la nueva matriz es i, j, k
+                matriznueva[i][j][k] = agentes[i*L+j][k]
+    return matriznueva
