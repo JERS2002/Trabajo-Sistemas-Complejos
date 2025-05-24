@@ -1,6 +1,8 @@
 import numpy as np
 import random
-#from numba import njit
+from numba import njit
+from numba.typed import List
+from collections import Counter
 
 def square_lattice(L):
     """
@@ -23,27 +25,34 @@ def square_lattice(L):
             # Vecino de la derecha (con contorno periódico)
             right = i * L + (j + 1) % L
             adjacency_matrix[current, right] = 1
-
     return adjacency_matrix
 #Calculamos la lista de vecinos
 def obtener_vecinos(adj_matrix, N, p):
-    vecinos_list = []
+    vecinos_list = List()  # Lista compatible con Numba
     for i in range(N):
-        vecinos = list(map(int, np.nonzero(adj_matrix[i])[0]))  # fuerza int
-        vecinos += list(range(N, N + p)) 
+        vecinos = List()
+        # Añade los vecinos de la matriz de adyacencia
+        for idx in np.nonzero(adj_matrix[i])[0]:
+            vecinos.append(int(idx))
+
+        # Añade los medios (de N a N+p-1)
+        for medio in range(N, N + p):
+            vecinos.append(medio)
+
         vecinos_list.append(vecinos)
+    
     return vecinos_list
 
 #Inicializa al azar la matriz de agentes
-#@njit
+@njit
 def MatrizInicial(agentes, N, f, q, prensas):
     for i in range(N+prensas):
          for j in range(f):
-            agentes[i][j] = np.random.randint(0,q)
+            agentes[i, j] = np.random.integers(0, q - 1)
     
 
 #Calcula la fracción de rasgos compartidos entre agentes i y j 
-#@njit
+@njit
 def similarity(i, j, agentes,f):
     sim = 0
     for k in range(f):
@@ -52,16 +61,16 @@ def similarity(i, j, agentes,f):
     return sim / f
 
 #Comprueba si ha finalizado la interacción
-#@njit
-def FinInteraccion(agentes, vecinos_list, N,f, prensas, sim_min):
+@njit
+def FinInteraccion(agentes, vecinos_list, N,f, p, sim_min):
     linksactivos = 0
-    for i in range(N+prensas):
+    for i in range(N):
         for j in vecinos_list[i]:
-            if j<N:
+            if j < i or (N <= j < N + p):
                 sim= similarity(i, j, agentes, f)
                 if sim<1 and sim>=sim_min:
                     linksactivos = linksactivos + 1
-    if linksactivos == 0:   
+    if linksactivos == 0: #or prensas>1:  
         # Si no queda interacción posible, devuelve True                    
         return True, linksactivos 
     else:           
@@ -101,8 +110,42 @@ def tamaño_mayor_cluster(agentes, vecinos_list, N):
                 mayor_cluster = cluster_size
 
     return mayor_cluster / N 
+# Más general que el anterior, ya que no solo devuelve el tamaño del mayor cluster.
+def tamaños_clusters(agentes, vecinos_list, N):
+    visitado = [False] * N
+    tamaños = []
 
+    for i in range(N):
+        if not visitado[i]:
+            cluster_size = 0
+            pila = [i]
+            visitado[i] = True
 
+            while pila:
+                nodo = pila.pop()
+                cluster_size += 1
+                
+                for v in vecinos_list[nodo]:
+                    if v < N and not visitado[v] and misma_cultura(agentes[i], agentes[v]):
+                        visitado[v] = True
+                        pila.append(v)
+
+            tamaños.append(cluster_size)
+
+    tamaños.sort(reverse=True)
+
+    # Contar la frecuencia de cada tamaño
+    contador = Counter(tamaños)
+
+    # Ordenar por tamaño de mayor a menor
+    tamaños_ordenados = sorted(contador.keys(), reverse=True)
+    frecuencias_ordenadas = [contador[t] for t in tamaños_ordenados]
+
+    #matriz de dos filas que en la primera tiene el tamaño de un cluster y en la segunda las vecs que aparece
+    matriz = np.array([tamaños_ordenados, frecuencias_ordenadas])
+    return matriz
+
+@njit
 def transformarmatriz(agentes, L, f, matriznueva):
     """
     Transforma la matriz de agentes en una matriz de tamaño L x L x f.
@@ -118,3 +161,63 @@ def transformarmatriz(agentes, L, f, matriznueva):
                 # y el índice en la nueva matriz es i, j, k
                 matriznueva[i][j][k] = agentes[i*L+j][k]
     return matriznueva
+
+
+def MatIniPrenExcl(agentes, N, f, q, prensas):
+    prensaaleatoria = np.zeros((N + prensas, f), dtype=int)
+    valor=0
+    # Inicializa los agentes normales
+    for i in range(N):
+        for j in range(f):
+            agentes[i][j] = np.random.randint(0, q)
+    # Inicializa los agentes de prensa asegurando que no sean iguales entre sí
+    for i in range(q):
+        for j in range(f):
+            prensaaleatoria[i][j] = i
+
+    for k in range(q*f*prensas):
+        i= random.randint(0, q-1)
+        j= random.randint(0, f-1)
+        valor=prensaaleatoria[i][j]
+        ia=random.randint(0, q-1)
+        ja=random.randint(0, f-1)
+        prensaaleatoria[i][j]= prensaaleatoria[ia][ja]
+        prensaaleatoria[ia][ja]= valor
+
+    for i in range(N, N+prensas):
+        for j in range(f):
+            agentes[i][j] = prensaaleatoria[i][j]
+
+
+
+            """while True:
+            nuevo = [np.random.randint(0, q) for _ in range(f)]
+            es_unico = True
+            for k in range(N, i):
+                if all(agentes[k][j] == nuevo[j] for j in range(f)):
+                    es_unico = False
+                    break
+            if es_unico:
+                for j in range(f):
+                    agentes[i][j] = nuevo[j]
+                break """
+
+            
+"""def FinInteraccionPrensa(agentes, vecinos_list, N,f, prensas, sim_min):
+    linksactivos = 0
+    for i in range(N+prensas):
+        for j in vecinos_list[i]:
+            if j<N:
+                sim= similarity(i, j, agentes, f)
+                if sim<1 and sim>=sim_min:
+                    linksactivos = linksactivos + 1
+    if linksactivos == 0: #or prensas>1:  
+        # Si no queda interacción posible, devuelve True                    
+        return True, linksactivos 
+    else:           
+        if linksactivos<N*prensas:
+        #Si encuentra al menos una interacción posible, devuelve False
+        return False, linksactivos"""
+
+        
+        

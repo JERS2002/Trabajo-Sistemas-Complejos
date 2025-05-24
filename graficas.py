@@ -20,7 +20,7 @@ def graf_Smax_vs_q(q_values, par_orden_medio, par_orden_std, f, M, L,p,h):
         plt.savefig(carpeta + f"Axelrod_F{f}_M{M}_L{L}_P{p}.png", dpi=300)
     plt.show()
 
-"""def graf_Smax_std_vs_q(q_values, par_orden_std, f, M, L,p,h):
+def graf_Smax_std_vs_q(q_values, par_orden_std, f, M, L,p,h):
     carpeta = "Smax_std_vs_q_graficas/"
     plt.figure(figsize=(10, 6))
     plt.plot(q_values, par_orden_std , 'o-', label=f'N = {L}$^2$')
@@ -36,8 +36,8 @@ def graf_Smax_vs_q(q_values, par_orden_medio, par_orden_std, f, M, L,p,h):
         plt.savefig(carpeta + f"std_Axelrod_F{f}_M{M}_L{L}_P{p}_h{h}.png", dpi=300)
     else:
         plt.savefig(carpeta + f"std_Axelrod_F{f}_M{M}_L{L}_P{p}.png", dpi=300)
-"""
-def links_activos_vs_tiempo(link_list):
+
+"""def links_activos_vs_tiempo(link_list):
     tiempos = list(range(len(link_list)))
     plt.figure(figsize=(8, 5))
     plt.plot(tiempos, link_list, marker='o', linestyle='-', color='blue')
@@ -47,10 +47,36 @@ def links_activos_vs_tiempo(link_list):
     plt.grid(True)
     plt.tight_layout()
     plt.savefig("links_activos_vs_tiempo.png", dpi=300)
-    plt.show()
+    plt.show()"""
+
+def graficar_links_vs_tiempo(links_por_q, f, p, h):
+    carpeta ="links_activos_vs_t/"
+
+
+      # Definimos los intervalos de q
+    rangos = [
+        (3, 10),
+        (11, 18),
+        (19, 27)
+    ]
+
+    for i, (q_min, q_max) in enumerate(rangos, start=1):
+        plt.figure(figsize=(10, 6))
+        for q, links in links_por_q:
+            if q_min <= q <= q_max:
+                tiempos = list(range(len(links)))
+                plt.plot(tiempos, links, label=f"q = {q}")
+        plt.xlabel("Tiempo")
+        plt.ylabel("Número de links activos")
+        plt.title(f"Links activos vs tiempo para {q_min} ≤ q ≤ {q_max}")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(f"{carpeta}links_act_vs_t_q_{q_min}_{q_max}_f{f}_p{p}_h{h}.png", dpi=300)
+        plt.close()
     
 
-def animar_matriz_vectores(matrices, q):
+def animar_matriz_vectores(matrices, q, f, p, h):
     intervalo = 20
     max_val = q - 1  # Valor máximo posible para cada canal
     matrices_rgb = []
@@ -70,7 +96,7 @@ def animar_matriz_vectores(matrices, q):
     ani = animation.FuncAnimation(
         fig, actualizar, frames=len(matrices_rgb), interval=intervalo, blit=True, repeat=False
     )
-    ani.save('animacion.gif', writer='pillow')
+    ani.save(f'animacion_q={q}_f={f}_p={p}_h={h}.gif', writer='pillow')
     plt.show()
     return ani  # Mantén la referencia
 
